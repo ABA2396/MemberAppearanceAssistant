@@ -24,8 +24,9 @@
 
     // ---------------- 手写核心层:生成层之外的通用兜底 ----------------
     const CORE_CSS = [
-        // html 底色兜底,防止长页面/弹层遮罩外露白
-        'html { background: #0d0d0e !important; }',
+        // html 底色兜底,防止长页面/弹层遮罩外露白;滚动条用标准 scrollbar-color——
+        // ::-webkit-scrollbar 在部分同源 iframe 的根滚动条上不生效,标准属性全文档一致
+        'html { background: #0d0d0e !important; scrollbar-color: #2f3134 transparent; }',
         // 输入控件兜底:压掉 UA 默认白底即可,底色透明自适应容器亮度(实底固定值在不同
         // 亮度的容器上必然有的突兀);站方组件原生 ｢透明底+描边｣ 观感得以保留。
         // select/option 例外保实底,防原生下拉列表透叠
@@ -37,10 +38,32 @@
         // p3/p9 图文编辑器(read-editor iframe):画布(body)压回近黑,让正文纸张
         // .main(生成层给的 #17181A)浮出辨识度,否则纸张与画布同色一片黑
         'body:has(.eva3-web-editor) { background: #0d0d0e !important; }',
-        '::-webkit-scrollbar { width: 8px; height: 8px; }',
-        '::-webkit-scrollbar-thumb { background: #2f3134; border-radius: 4px; }',
-        '::-webkit-scrollbar-thumb:hover { background: #3d4044; }',
-        '::-webkit-scrollbar-track { background: transparent; }',
+        // 充电管理页暗色统一:工具卡白底线稿、奖牌白卡图、经营助手播放块均为白底内容图,
+        // invert 反色(hue-rotate 修正色相偏移);线稿用 92% 强度,白底反转成近卡片底的深灰
+        // 而非纯黑突兀;白色渐变蒙层(honor-panel::after)直接隐藏
+        '.rights.is-new__dashboard img.img { filter: invert(.92) hue-rotate(180deg); }',
+        // 奖牌卡含彩色内容(金徽章/头像/红色达成章),与截图类一致降亮度而不反色
+        '.honor-panel__badge { filter: brightness(.8); clip-path: inset(0 0 20% 0); }',
+        '.bottom-logo { filter: invert(1) hue-rotate(180deg); }',
+        '.honor-panel::after { display: none !important; }',
+        // 专属动态/评论弹幕筛选/专属表情包三卡的配图是功能截图而非线稿,不可反色,降亮度弱化刺眼感
+        '.rights.is-new__dashboard img.img[src*="mask_bg_3"], .rights.is-new__dashboard img.img[src*="mask_bg_4"], .rights.is-new__dashboard img.img[src*="mask_bg_6"] { filter: brightness(.8); }',
+        // 奖牌内容图底部渐变署名条反色后过亮,直接裁掉
+        '.honor-panel__badge { clip-path: inset(0 0 20% 0); }',
+        // 充电挑战横幅:背景图本身是亮色渐变,容器 invert 反色后呈暗色渐变、闪电色相保留;
+        // 生成层已把站方深字提亮成浅色,浅字经容器反转会变暗,故子元素强制深色,
+        // 反转后渲染为浅色,暗底上可读
+        '.set-entry_general { filter: invert(1) hue-rotate(180deg); }',
+        '.set-entry_general * { color: #18191c !important; }',
+        // Ant Design 输入框:亮色主题黑字黑框与白底 wrapper 特异性高,CORE 兜底压不住,用 !important
+        '.ant-input-outlined .ant-input, input.ant-input-outlined { color: #e7e9eb !important; border-color: #2f3134 !important; background: transparent !important; }',
+        '.ant-input-affix-wrapper.ant-input-outlined { background: transparent !important; border-color: #2f3134 !important; }',
+        '.ant-input-outlined .ant-input::placeholder { color: #6e7278 !important; }',
+        // bcc 表格表头弱灰 #757575 在暗底对比仅 4.0,提到次级文本档
+        'th .bcc-table__cell, th .bcc-table__cell .bcc-table__sort { color: #99a2aa; }',
+        // 数据中心首页:echarts 画布内轴文字是亮色主题色,CSS 够不到 canvas,
+        // 对图表容器整体反色(浅底图表变暗底,色相经 hue-rotate 大致保留)
+        '.dc-section-item_body .echarts { filter: invert(1) hue-rotate(180deg); }',
         '::selection { background: #00a1d6; color: #fff; }',
     ].join('\n');
 
