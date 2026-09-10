@@ -1,5 +1,7 @@
 # 创作中心暗色模式助手
 
+<p align="center"><img src="docs/banner.png" alt="MemberAppearanceAssistant" width="640"></p>
+
 给 B 站创作中心([member.bilibili.com](https://member.bilibili.com))加一个可开关的暗色模式,单文件油猴脚本,无任何外部依赖。色板沿用 B 站主站 night-mode 的变量体系,观感与主站夜间模式一致。
 
 ## 覆盖范围
