@@ -1,0 +1,203 @@
+// ==UserScript==
+// @name         创作中心暗色模式助手
+// @namespace    uye.member-dark
+// @author       uye
+// @version      0.1.0
+// @description  给 B 站创作中心(member.bilibili.com)加可开关的暗色模式:左下角 ｢暗｣ 按钮切换,状态存 localStorage;色板沿用主站 night-mode 变量体系。图表/图片/视频不做反色。
+// @match        https://member.bilibili.com/*
+// @updateURL    https://raw.githubusercontent.com/ABA2396/MemberAppearanceAssistant/main/member-dark.user.js
+// @downloadURL  https://raw.githubusercontent.com/ABA2396/MemberAppearanceAssistant/main/member-dark.user.js
+// @license      GNU AGPLv3
+// @run-at       document-idle
+// @grant        none
+// ==/UserScript==
+(function () {
+    'use strict';
+
+    const GENERATED_CSS = ''; // __GENERATED_CSS__(assemble 时整行替换,勿动格式)
+
+    const STYLE_ID = 'member-dark-style';
+    const BTN_ID = 'member-dark-toggle';
+    const KEY = 'memberDarkOn';
+    // 同源 iframe(图文编辑器/稿件管理/创作选择)与顶层共用一套样式与开关状态
+    const IS_TOP = window.top === window.self;
+
+    // ---------------- 手写核心层:生成层之外的通用兜底 ----------------
+    const CORE_CSS = [
+        // html 底色兜底,防止长页面/弹层遮罩外露白
+        'html { background: #0d0d0e !important; }',
+        // 输入控件兜底:压掉 UA 默认白底即可,底色透明自适应容器亮度(实底固定值在不同
+        // 亮度的容器上必然有的突兀);站方组件原生 ｢透明底+描边｣ 观感得以保留。
+        // select/option 例外保实底,防原生下拉列表透叠
+        'input[type="text"], input[type="search"], input[type="number"], input[type="password"],'
+        + ' input[type="email"], input[type="tel"], input[type="url"], input[type="date"], textarea'
+        + ' { background: transparent; color: #e7e9eb; border-color: #2f3134; }',
+        'select, option { background: #1f2022; color: #e7e9eb; border-color: #2f3134; }',
+        'input::placeholder, textarea::placeholder { color: #6e7278; }',
+        // p3/p9 图文编辑器(read-editor iframe):画布(body)压回近黑,让正文纸张
+        // .main(生成层给的 #17181A)浮出辨识度,否则纸张与画布同色一片黑
+        'body:has(.eva3-web-editor) { background: #0d0d0e !important; }',
+        '::-webkit-scrollbar { width: 8px; height: 8px; }',
+        '::-webkit-scrollbar-thumb { background: #2f3134; border-radius: 4px; }',
+        '::-webkit-scrollbar-thumb:hover { background: #3d4044; }',
+        '::-webkit-scrollbar-track { background: transparent; }',
+        '::selection { background: #00a1d6; color: #fff; }',
+    ].join('\n');
+
+    function buildCss() {
+        return GENERATED_CSS + '\n' + CORE_CSS;
+    }
+
+    // 缺省开启:装脚本即为了暗色,只有手动关过才记住 ｢关｣
+    let styleEl = null;
+    let darkOn = localStorage.getItem(KEY) !== '0';
+
+    // Dark Reader 活跃时会与本脚本双重暗色打架
+    function darkReaderActive() {
+        return !!(document.documentElement.getAttribute('data-darkreader-scheme') ||
+            document.querySelector('style[data-darkreader-mode]'));
+    }
+
+    function applyStyle(on) {
+        if (!styleEl || !styleEl.isConnected) {
+            styleEl = document.getElementById(STYLE_ID);
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = STYLE_ID;
+                document.documentElement.appendChild(styleEl);
+            }
+        }
+        styleEl.textContent = on ? buildCss() : '';
+        // 捷径:激活站内现成暗色规则(收益中心子应用的配色规则、上传页的 .dark-img 滤镜);
+        // 这些规则由 micro-app 动态加载,类挂着对无此规则的页面无副作用
+        document.documentElement.classList.toggle('night-mode', on);
+    }
+
+    // ---------------- 开关按钮(仅顶层,可拖动) ----------------
+    function buildButton() {
+        const b = document.createElement('div');
+        b.id = BTN_ID;
+        b.textContent = '暗';
+        const POS_KEY = KEY + 'BtnPos';
+        Object.assign(b.style, {
+            position: 'fixed', left: '18px', bottom: '18px', zIndex: 2147483646,
+            width: '34px', height: '34px', lineHeight: '34px', textAlign: 'center',
+            borderRadius: '50%', background: 'rgba(0,0,0,.45)', color: '#fff',
+            fontSize: '14px', cursor: 'pointer', userSelect: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.3)',
+            touchAction: 'none',
+        });
+        // 恢复上次拖拽位置(存视口坐标,clamp 进当前视口防跨分辨率出界)
+        try {
+            const p = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
+            if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+                b.style.left = Math.max(0, Math.min(p.x, innerWidth - 36)) + 'px';
+                b.style.top = Math.max(0, Math.min(p.y, innerHeight - 36)) + 'px';
+                b.style.bottom = 'auto';
+            }
+        } catch (e) {}
+        b.title = '切换创作中心暗色模式(可拖动)';
+        if (darkReaderActive()) {
+            b.title += '(检测到 Dark Reader,建议对本站关闭以免颜色打架)';
+            console.warn('[member-dark] 检测到 Dark Reader 活跃,建议对 member.bilibili.com 关闭,避免双重暗色');
+        }
+        const DRAG_PX = 4;
+        let sx = 0, sy = 0, ox = 0, oy = 0, moved = false, dragging = false;
+        b.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            const rect = b.getBoundingClientRect();
+            sx = e.clientX; sy = e.clientY; ox = rect.left; oy = rect.top;
+            moved = false; dragging = true;
+            b.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+        b.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (!moved && Math.hypot(dx, dy) > DRAG_PX) {
+                moved = true;
+                b.style.bottom = 'auto';
+                b.style.cursor = 'grabbing';
+            }
+            if (!moved) return;
+            b.style.left = Math.max(0, Math.min(ox + dx, innerWidth - b.offsetWidth)) + 'px';
+            b.style.top = Math.max(0, Math.min(oy + dy, innerHeight - b.offsetHeight)) + 'px';
+        });
+        b.addEventListener('pointerup', () => {
+            if (!dragging) return;
+            dragging = false;
+            b.style.cursor = 'pointer';
+            if (moved) {
+                localStorage.setItem(POS_KEY, JSON.stringify({ x: b.offsetLeft, y: b.offsetTop }));
+            } else {
+                darkOn = !darkOn;
+                localStorage.setItem(KEY, darkOn ? '1' : '0');
+                applyStyle(darkOn);
+            }
+        });
+        b.addEventListener('pointercancel', () => {
+            dragging = false;
+            b.style.cursor = 'pointer';
+        });
+        return b;
+    }
+
+    // ---------------- 图文编辑器右侧手机预览:默认夜间模式 ----------------
+    // 预览主题由 open shadow 里的 <eva3-preview-theme theme="light|dark"> 属性驱动,
+    // dark 与脚本暗色板同源;面板随工具栏动态卸载/重建,WeakSet 保证每个新实例
+    // 只设一次默认,之后尊重用户手动切换
+    const previewHandled = new WeakSet();
+    function setPreviewDark() {
+        for (const host of document.querySelectorAll('eva3-preview')) {
+            if (previewHandled.has(host)) continue;
+            const themeEl = host.shadowRoot && host.shadowRoot.querySelector('eva3-preview-theme');
+            if (!themeEl) continue;
+            previewHandled.add(host);
+            themeEl.setAttribute('theme', 'dark');
+        }
+    }
+
+    // ---------------- 自愈:SPA 切页/子应用卸载可能摘样式、摘类、摘按钮 ----------------
+    // 防抖带 2s 强制下限:只做补缺检查,不重注入,避免高频变更下饿死
+    let fixTimer = null;
+    function scheduleFix() {
+        if (fixTimer) return;
+        fixTimer = setTimeout(() => {
+            fixTimer = null;
+            if (!styleEl || !styleEl.isConnected) applyStyle(darkOn);
+            if (darkOn) {
+                if (!styleEl || !styleEl.textContent) applyStyle(true);
+                if (!document.documentElement.classList.contains('night-mode')) {
+                    document.documentElement.classList.add('night-mode');
+                }
+            }
+            if (IS_TOP && !document.getElementById(BTN_ID) && document.body) {
+                document.body.appendChild(buildButton());
+            }
+            setPreviewDark();
+        }, 2000);
+    }
+
+    // ---------------- 跨 frame 同步:顶层切换后,同源 iframe 跟随 ----------------
+    window.addEventListener('storage', (e) => {
+        if (e.key === KEY && e.newValue !== null) {
+            darkOn = e.newValue === '1';
+            applyStyle(darkOn);
+        }
+    });
+
+    function mount() {
+        if (IS_TOP && document.body) {
+            const old = document.getElementById(BTN_ID);
+            if (old) old.remove();
+            document.body.appendChild(buildButton());
+        }
+        applyStyle(darkOn);
+        setPreviewDark(); // 首扫:注入时预览面板可能已挂载,不能只等 Observer 触发
+        const obs = new MutationObserver(scheduleFix);
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+        if (document.body) obs.observe(document.body, { childList: true, subtree: false });
+    }
+
+    if (document.body) mount();
+    else document.addEventListener('DOMContentLoaded', mount, { once: true });
+})();
