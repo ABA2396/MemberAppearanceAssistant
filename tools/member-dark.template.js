@@ -2,7 +2,7 @@
 // @name         创作中心暗色模式助手
 // @namespace    uye.member-dark
 // @author       uye
-// @version      0.1.0
+// @version      0.2.0
 // @description  给 B 站创作中心(member.bilibili.com)加可开关的暗色模式:左下角 ｢暗｣ 按钮切换,状态存 localStorage;色板沿用主站 night-mode 变量体系。不做整页反色,图片/图表仅个别白底内容定点反色。
 // @match        https://member.bilibili.com/*
 // @match        https://message.bilibili.com/pages/nav/*
@@ -169,18 +169,15 @@
         return b;
     }
 
-    // ---------------- 图文编辑器右侧手机预览:默认夜间模式 ----------------
-    // 预览主题由 open shadow 里的 <eva3-preview-theme theme="light|dark"> 属性驱动,
-    // dark 与脚本暗色板同源;面板随工具栏动态卸载/重建,WeakSet 保证每个新实例
-    // 只设一次默认,之后尊重用户手动切换
-    const previewHandled = new WeakSet();
-    function setPreviewDark() {
-        for (const host of document.querySelectorAll('eva3-preview')) {
-            if (previewHandled.has(host)) continue;
-            const themeEl = host.shadowRoot && host.shadowRoot.querySelector('eva3-preview-theme');
-            if (!themeEl) continue;
-            previewHandled.add(host);
-            themeEl.setAttribute('theme', 'dark');
+    // ---------------- 编辑器工具栏图标:shadow 内写死灰字,外部 CSS 够不到 ----------------
+    // eva3-icon 的 path fill=currentColor,但组件 :host 写死 color:#464949;
+    // :host 规则会盖过 host 的普通内联样式,须用 !important 级内联才能压过
+    function fixEva3Icons() {
+        for (const item of document.querySelectorAll('.eva3-toolbar-item')) {
+            if (!item.shadowRoot) continue;
+            for (const el of item.shadowRoot.querySelectorAll('eva3-button, eva3-icon, eva3-tooltip')) {
+                el.style.setProperty('color', 'inherit', 'important');
+            }
         }
     }
 
@@ -201,7 +198,7 @@
             if (IS_TOP && !document.getElementById(BTN_ID) && document.body) {
                 document.body.appendChild(buildButton());
             }
-            setPreviewDark();
+            fixEva3Icons();
         }, 2000);
     }
 
@@ -220,7 +217,7 @@
             document.body.appendChild(buildButton());
         }
         applyStyle(darkOn);
-        setPreviewDark(); // 首扫:注入时预览面板可能已挂载,不能只等 Observer 触发
+        fixEva3Icons(); // 首扫:注入时工具栏可能已挂载,不能只等 Observer 触发
         const obs = new MutationObserver(scheduleFix);
         obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
         if (document.body) obs.observe(document.body, { childList: true, subtree: false });

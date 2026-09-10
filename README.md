@@ -34,8 +34,7 @@
 ## 使用提示
 
 - 脚本会检测 [Dark Reader](https://darkreader.org/),它与本脚本同时开启会双重暗色打架,检测到时会在按钮悬停提示与控制台警告,建议对 `member.bilibili.com` 关闭 Dark Reader;
-- 同源 iframe(图文编辑器、稿件列表、创作选择)由 Tampermonkey 按 `@match` 自动注入,开关状态跨 frame 同步;
-- 图文编辑器右侧手机预览默认以夜间模式打开,手动切回亮色后脚本不再干预。
+- 同源 iframe(图文编辑器、稿件列表、创作选择)由 Tampermonkey 按 `@match` 自动注入,开关状态跨 frame 同步。
 
 ## 维护与重新生成
 

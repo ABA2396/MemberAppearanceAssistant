@@ -163,7 +163,9 @@ function buildThemeVars() {
   const decls = [...darkCss.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+)/g)]
     .map(m => `${m[1]}: ${m[2].trim()} !important`)
     .join('; ');
-  return decls ? `:root { ${decls} }` : '';
+  // html:root 而非 :root:站方(york 编辑器等)会在我们之后动态注入同带 !important 的
+  // :root 亮值变量表,同特异性时后插者胜;提高一级特异性才能压住
+  return decls ? `html:root { ${decls} }` : '';
 }
 
 // ---------------- 主流程 ----------------
