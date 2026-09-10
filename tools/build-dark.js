@@ -67,7 +67,7 @@ function mapColor(prop, val) {
       const rgb = hexToRgb('#' + hex);
       const key = '#' + hex.toLowerCase();
       const L = lum(rgb), S = sat(rgb);
-      const alphaSuffix = a < 1 ? a.toFixed(2).slice(1) : ''; // "…" 保留原透明度
+      const alphaSuffix = a < 1 ? Math.round(a * 255).toString(16).padStart(2, '0') : ''; // 转两位 hex alpha 保留原透明度(如 0.85→d9),拼成合法的 #RRGGBBAA
       if (a < 0.5) {
         // 低透明染色层:灰阶遮罩(阴影/分隔)在暗底自然,保留;彩色染色暗底上几乎不可见,提 alpha 找回存在感
         if (S >= 30) return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.min(a * 3, 0.35).toFixed(2)})`;
@@ -103,9 +103,10 @@ function mapColor(prop, val) {
         }
         if (r > 235) {
           // 白/近白按原 alpha 分流:a≥0.95 是实心底——误减淡会在暗色下多层叠加成灰块与
-          // 拼接分界;与 hex 分支同档(L≥253→#17181A,240..252→#141414)。
+          // 拼接分界;档位与 hex 分支一致(L≥253→#17181A,其余走连续灰阶),
+          // 同一颜色 rgb() 与 hex 两种写法才不会出现灰度差。
           // a<0.95 才是真遮罩/高光,减淡保留
-          if (a >= 0.95) return L >= 253 ? '#17181A' : '#141414';
+          if (a >= 0.95) return L >= 253 ? '#17181A' : darkBg(rgb);
           return `rgba(255,255,255,${(a * 0.08).toFixed(2)})`;
         }
         if (L >= 200) {

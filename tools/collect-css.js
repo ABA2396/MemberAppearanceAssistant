@@ -11,8 +11,18 @@ const probe = `(async () => {
   const docs = [document];
   const walk = (d) => [...d.querySelectorAll('iframe')].forEach(f => { try { if (f.contentDocument) { docs.push(f.contentDocument); walk(f.contentDocument); } } catch (e) {} });
   walk(document);
+  // adoptedStyleSheets(constructable,ownerNode 为 null)与 shadowRoot 内的表不在
+  // document.styleSheets 里;micro-app 微前端的样式隔离就走这条路,漏收则整批组件无映射
+  const adoptOf = (root) => [...(root.adoptedStyleSheets || [])];
+  const shadows = [];
+  const walkShadow = (root) => [...root.querySelectorAll('*')].forEach(el => {
+    if (el.shadowRoot) { shadows.push(el.shadowRoot); walkShadow(el.shadowRoot); }
+  });
   for (const d of docs) {
-    for (const ss of d.styleSheets) {
+    walkShadow(d);
+    const all = [...d.styleSheets, ...adoptOf(d), ...shadows.flatMap(s => [...s.styleSheets, ...adoptOf(s)])];
+    shadows.length = 0;
+    for (const ss of all) {
       const owner = ss.ownerNode;
       // Dark Reader 的注入表是全站改写规则,混入会污染生成器
       if (owner && [...owner.attributes || []].some(a => a.name.startsWith('data-darkreader'))) continue;

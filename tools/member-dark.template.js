@@ -3,8 +3,9 @@
 // @namespace    uye.member-dark
 // @author       uye
 // @version      0.1.0
-// @description  给 B 站创作中心(member.bilibili.com)加可开关的暗色模式:左下角 ｢暗｣ 按钮切换,状态存 localStorage;色板沿用主站 night-mode 变量体系。图表/图片/视频不做反色。
+// @description  给 B 站创作中心(member.bilibili.com)加可开关的暗色模式:左下角 ｢暗｣ 按钮切换,状态存 localStorage;色板沿用主站 night-mode 变量体系。不做整页反色,图片/图表仅个别白底内容定点反色。
 // @match        https://member.bilibili.com/*
+// @match        https://message.bilibili.com/pages/nav/*
 // @updateURL    https://raw.githubusercontent.com/ABA2396/MemberAppearanceAssistant/main/member-dark.user.js
 // @downloadURL  https://raw.githubusercontent.com/ABA2396/MemberAppearanceAssistant/main/member-dark.user.js
 // @license      GNU AGPLv3
@@ -19,7 +20,8 @@
     const STYLE_ID = 'member-dark-style';
     const BTN_ID = 'member-dark-toggle';
     const KEY = 'memberDarkOn';
-    // 同源 iframe(图文编辑器/稿件管理/创作选择)与顶层共用一套样式与开关状态
+    // 同源 iframe(图文编辑器/稿件管理/创作选择)与顶层共用一套样式与开关状态;
+    // 信封弹层(message.bilibili.com 域 iframe)跨域不共享 localStorage,按缺省开启注入
     const IS_TOP = window.top === window.self;
 
     // ---------------- 手写核心层:生成层之外的通用兜底 ----------------
@@ -38,18 +40,17 @@
         // p3/p9 图文编辑器(read-editor iframe):画布(body)压回近黑,让正文纸张
         // .main(生成层给的 #17181A)浮出辨识度,否则纸张与画布同色一片黑
         'body:has(.eva3-web-editor) { background: #0d0d0e !important; }',
-        // 充电管理页暗色统一:工具卡白底线稿、奖牌白卡图、经营助手播放块均为白底内容图,
-        // invert 反色(hue-rotate 修正色相偏移);线稿用 92% 强度,白底反转成近卡片底的深灰
+        // 充电管理页暗色统一:工具卡白底线稿、经营助手播放块等白底内容图 invert 反色
+        // (hue-rotate 修正色相偏移);线稿用 92% 强度,白底反转成近卡片底的深灰
         // 而非纯黑突兀;白色渐变蒙层(honor-panel::after)直接隐藏
         '.rights.is-new__dashboard img.img { filter: invert(.92) hue-rotate(180deg); }',
-        // 奖牌卡含彩色内容(金徽章/头像/红色达成章),与截图类一致降亮度而不反色
+        // 奖牌卡含彩色内容(金徽章/头像/红色达成章),与截图类一致降亮度而不反色;
+        // 底部渐变署名条偏亮,clip-path 裁掉下方 20%
         '.honor-panel__badge { filter: brightness(.8); clip-path: inset(0 0 20% 0); }',
         '.bottom-logo { filter: invert(1) hue-rotate(180deg); }',
         '.honor-panel::after { display: none !important; }',
         // 专属动态/评论弹幕筛选/专属表情包三卡的配图是功能截图而非线稿,不可反色,降亮度弱化刺眼感
         '.rights.is-new__dashboard img.img[src*="mask_bg_3"], .rights.is-new__dashboard img.img[src*="mask_bg_4"], .rights.is-new__dashboard img.img[src*="mask_bg_6"] { filter: brightness(.8); }',
-        // 奖牌内容图底部渐变署名条反色后过亮,直接裁掉
-        '.honor-panel__badge { clip-path: inset(0 0 20% 0); }',
         // 充电挑战横幅:背景图本身是亮色渐变,容器 invert 反色后呈暗色渐变、闪电色相保留;
         // 生成层已把站方深字提亮成浅色,浅字经容器反转会变暗,故子元素强制深色,
         // 反转后渲染为浅色,暗底上可读
@@ -64,6 +65,10 @@
         // 数据中心首页:echarts 画布内轴文字是亮色主题色,CSS 够不到 canvas,
         // 对图表容器整体反色(浅底图表变暗底,色相经 hue-rotate 大致保留)
         '.dc-section-item_body .echarts { filter: invert(1) hue-rotate(180deg); }',
+        // ECharts 悬停提示:无类名,白底和浅灰文字都是 JS 配置写进内联样式,
+        // 按 ｢绝对定位+内联白底｣ 特征压暗;全站通用——暗色模式下任何内联白底浮层都该压暗
+        'div[style*="position: absolute"][style*="background-color: rgb(255, 255, 255)"]'
+        + ' { background-color: #1f2022 !important; color: #e7e9eb !important; }',
         '::selection { background: #00a1d6; color: #fff; }',
     ].join('\n');
 
