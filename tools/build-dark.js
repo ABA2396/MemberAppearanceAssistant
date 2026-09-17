@@ -146,7 +146,21 @@ function mapDeclarations(body) {
     if (i < 0) continue;
     const prop = decl.slice(0, i).trim();
     const val = decl.slice(i + 1).trim();
-    if (!prop || val.includes('url(') || val.startsWith('var(')) continue;
+    if (!prop) continue;
+    if (val.includes('url(')) {
+      // 复合背景(颜色+base64 占位图等):整条跳过会连底色一起丢(如封面托底
+      // .cover-wrp 的 #f1f3f7 url(data:...) 亮托在暗页刺眼);url 部分保留在
+      // 站方原 shorthand 不动,只把颜色 token 映射成独立 background-color 声明
+      if (/^background(-image)?$/.test(prop)) {
+        const toks = val.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d+[^)]*\)/g) || [];
+        for (const tok of toks) {
+          const nv = mapColor('background-color', tok);
+          if (nv !== tok) { out.push(`background-color: ${nv}`); break; }
+        }
+      }
+      continue;
+    }
+    if (val.startsWith('var(')) continue;
     if (!/[#r]/.test(val)) continue; // 快速筛:无 hex 无 rgb 的声明跳过
     const nv = mapColor(prop, val);
     if (nv && nv !== val) out.push(`${prop}: ${nv}`);

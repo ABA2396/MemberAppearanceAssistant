@@ -6,7 +6,7 @@
 
 | 文件 | 作用 |
 | --- | --- |
-| `collect-css.js` | 经 CDP 中继收集页面(主文档 + 同源 iframe + micro-app 内联)全部样式表到 `css-dump/` |
+| `collect-css.js` | 收集页面(主文档 + 同源 iframe + micro-app 内联)全部样式表到 `css-dump/`;与浏览器传输解耦:`probe` 导出页面探针,`save` 处理 bsk evaluate 的输出 |
 | `css-dump/` | 站方样式表快照(生成器输入,不进版本库,用 collect-css.js 重新收集) |
 | `build-dark.js` | 颜色重写生成器:读 `css-dump/` 产出 `dark-generated.css` |
 | `member-dark.template.js` | 脚本模板:头部元信息、开关按钮、自愈 Observer、iframe 注入、编辑器预览默认夜间模式、手写核心兜底层 |
@@ -14,11 +14,13 @@
 
 ## 重新生成流程
 
-前提:Chrome 开着远程调试且已登录创作中心,CDP 中继跑在 `127.0.0.1:9223`。
+前提:Chrome 装有 browser-skill 扩展且已登录创作中心,bsk 会话已建立(链路见跨项目记忆 browser-debugging)。
 
 ```sh
-# 1. 收集样式表:对每类页面各跑一次(参数: 会话名, 输出标签)
-node collect-css.js p4 home
+# 1. 收集样式表:对每类页面各跑一次(标签名区分来源,同名表去重)
+node collect-css.js probe > /tmp/probe.js
+bsk evaluate --json --session <id> --tab-id <tab> "$(cat /tmp/probe.js)" > /tmp/raw.json
+node collect-css.js save <标签名> /tmp/raw.json
 # 2. 生成暗色 CSS 并组装脚本
 node build-dark.js && node assemble.js
 # 3. 语法检查

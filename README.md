@@ -11,15 +11,21 @@
 | 页面 | 路径 |
 | --- | --- |
 | 首页 | `/platform/home` |
-| 稿件管理 | `/platform/upload-manager/ep`、`/platform/upload-manager/opus`、`/platform/upload-manager/audience-zimu` |
+| 稿件管理 | `/platform/upload-manager/article`、`/platform/upload-manager/ep`、`/platform/upload-manager/opus`、`/platform/upload-manager/audience-zimu` |
+| 申诉管理 | `/platform/upload-manager/appeal` |
 | 评论管理 | `/platform/comment/article` |
+| 弹幕管理 | `/platform/inter-active/danmu` |
 | 图文创作/编辑 | `/platform/upload/text/new-article`、`/platform/upload/text/new-edit` |
 | 视频上传 | `/platform/upload/video/frame` |
 | 数据中心 | `/platform/data-up/index`、`/platform/data-up/video/` |
-| 粉丝管理 | `/platform/fans/manage` |
+| 粉丝管理 | `/platform/fans/manage`、`/platform/fans/medal` |
 | 互动管理 | `/platform/inter-active/danmu`、`/platform/inter-active/filter`、`/platform/inter-active/feedback/report` |
 | 收益中心 | `/platform/allowance/incomeCenter/pc` |
 | 创作激励 | `/platform/allowance/excitation/pc` |
+| 任务广场 | `/platform/allowance/clue-up/list` |
+| 花火平台 | `/platform/allowance/pick_up/settle` |
+| 模板激励 | `/platform/allowance/template-incentive/` |
+| 必火推广 | `/platform/growingUp/fly` |
 | 充电管理 | `/platform/allowance/upower-manage/home`、`/platform/allowance/upower-manage/multiple-level`、`/platform/allowance/upower-manage/v2/*` |
 | UP 动画数据中心 | `/platform/allowance/upanimation/data-center` |
 | 社区公约 | `/platform/convention/` |

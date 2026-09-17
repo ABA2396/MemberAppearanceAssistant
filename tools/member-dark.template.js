@@ -2,7 +2,7 @@
 // @name         创作中心暗色模式助手
 // @namespace    uye.member-dark
 // @author       uye
-// @version      0.2.0
+// @version      0.2.1
 // @description  给 B 站创作中心(member.bilibili.com)加可开关的暗色模式:左下角 ｢暗｣ 按钮切换,状态存 localStorage;色板沿用主站 night-mode 变量体系。不做整页反色,图片/图表仅个别白底内容定点反色。
 // @match        https://member.bilibili.com/*
 // @match        https://message.bilibili.com/pages/nav/*
@@ -65,6 +65,9 @@
         // 数据中心首页:echarts 画布内轴文字是亮色主题色,CSS 够不到 canvas,
         // 对图表容器整体反色(浅底图表变暗底,色相经 hue-rotate 大致保留)
         '.dc-section-item_body .echarts { filter: invert(1) hue-rotate(180deg); }',
+        // 数据中心 data-up 页:折线图 canvas 亮色主题绘制(深灰轴文字),容器已映射为
+        // 暗卡片,canvas 内容反色让轴文字变浅、折线色相经 hue-rotate 大致保留
+        '.core-data canvas, .chart-main canvas { filter: invert(1) hue-rotate(180deg); }',
         // ECharts 悬停提示:无类名,白底和浅灰文字都是 JS 配置写进内联样式,
         // 按 ｢绝对定位+内联白底｣ 特征压暗;全站通用——暗色模式下任何内联白底浮层都该压暗
         'div[style*="position: absolute"][style*="background-color: rgb(255, 255, 255)"]'
