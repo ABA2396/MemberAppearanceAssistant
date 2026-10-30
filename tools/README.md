@@ -1,34 +1,32 @@
-# tools/ — 脚本生成与维护工具链
+# tools/ — 脚本维护工具
 
-`member-dark.user.js` 的暗色 CSS 主体是**从站点真实样式表自动生成**的(创作中心站方颜色全部写死 hex、无语义变量,故采用 ｢逐组件类名覆盖｣ 路线,生成器对站方规则做 ｢文字灰提亮 / 背景灰阶压暗 / 品牌色保留 / 浅彩底同色相压暗｣ 的声明级映射)。站点改版后按下面流程重新生成。
+`member-dark.user.js` 的暗色主体由脚本内的**动态映射引擎**在运行时生成:遍历页面(含同源 iframe、shadow、adopted 表)全部样式表,逐声明跑 ｢文字灰提亮 / 背景灰阶压暗 / 品牌色保留 / 浅彩底同色相压暗｣ 的颜色变换并注入改写规则;MutationObserver 监听新增样式表增量处理。站方改版新增的样式天然被引擎接住,**不需要收集样式表或重新生成映射**。
 
 ## 文件
 
 | 文件 | 作用 |
 | --- | --- |
-| `collect-css.js` | 收集页面(主文档 + 同源 iframe + micro-app 内联)全部样式表到 `css-dump/`;与浏览器传输解耦:`probe` 导出页面探针,`save` 处理 bsk evaluate 的输出 |
-| `css-dump/` | 站方样式表快照(生成器输入,不进版本库,用 collect-css.js 重新收集) |
-| `build-dark.js` | 颜色重写生成器:读 `css-dump/` 产出 `dark-generated.css` |
-| `member-dark.template.js` | 脚本模板:头部元信息、开关按钮、自愈 Observer、iframe 注入、编辑器预览默认夜间模式、手写核心兜底层 |
-| `assemble.js` | 把生成的 CSS 以字符串常量嵌入模板,输出 `../member-dark.user.js` |
+| `member-dark.template.js` | 脚本本体:颜色变换函数、动态映射引擎、开关按钮、自愈 Observer、手写核心兜底层 |
+| `theme-dark.css` | 主站 night-mode 语义变量色板(382 个 `--Ga*`/`--text1` 等值的数据文件,不随站方改版变) |
+| `assemble.js` | 把变量表编译成 `html:root{... !important}` 注入模板,输出 `../member-dark.user.js` |
 
-## 重新生成流程
-
-前提:Chrome 装有 browser-skill 扩展且已登录创作中心,bsk 会话已建立(链路见跨项目记忆 browser-debugging)。
+## 维护流程
 
 ```sh
-# 1. 收集样式表:对每类页面各跑一次(标签名区分来源,同名表去重)
-node collect-css.js probe > /tmp/probe.js
-bsk evaluate --json --session <id> --tab-id <tab> "$(cat /tmp/probe.js)" > /tmp/raw.json
-node collect-css.js save <标签名> /tmp/raw.json
-# 2. 生成暗色 CSS 并组装脚本
-node build-dark.js && node assemble.js
-# 3. 语法检查
-node --check ../member-dark.user.js
+# 改模板(引擎逻辑/色板/CORE 兜底)或变量表后:
+node assemble.js && node --check ../member-dark.user.js
 ```
 
-改动映射规则只需改 `build-dark.js` 后重跑第 2 步;改动脚本行为(开关/自愈/兜底层)改 `member-dark.template.js` 后重跑第 2 步。**每次发布 `@version` 必须递增**,否则用户端不会更新。
+**每次发布 `@version` 必须递增**,否则用户端 Tampermonkey 不会更新。
 
-## 手写兜底层在哪
+## 改什么在哪改
 
-生成器只覆盖 ｢站方样式表里写了颜色｣ 的规则。三类盲区在模板的 `CORE_CSS` 手写兜底:输入控件 UA 默认白底、滚动条/选区、html 底色。页面级特例按 ｢哪页哪个组件｣ 注释就近加在 `CORE_CSS`。
+- **某页某个组件颜色不对**:站方规则被通用变换误判时,在模板 `CORE_CSS` 按 ｢哪页哪个组件｣ 注释就近加覆盖条目(图表 canvas 反色、Ant Design 输入框等既有先例)。
+- **整体色感不对**(全部卡片太暗/太亮、文字对比不足):调 `mapColor` 一带的阈值与色板(`darkBg`/`darkText`/`darkTint`),全站生效。
+- **新页面整体亮色**:通常是新域名/新路由不在 `@match` 或 `collect` 时跨域表 fetch 失败,查控制台与 `fetched` 缓存。
+
+## 引擎的已知边界
+
+- 跨域样式表(`s1.hdslb.com`)的 `cssRules` 读不到,引擎用 `fetch` 拉文本后借临时 `<style>` 让浏览器解析;hdslb 静态域已实测带 CORS 允许,fetch 失败的表会被跳过并记入缓存不再重试。
+- `@import` 指向的跨域表无法展开(站方打包产物少用)。
+- CSS 变量(站方 `var()` 引用)不做静态求值;站方语义变量的暗色换肤由 `theme-dark.css` 编译出的 `html:root` 全量变量表整体覆盖。

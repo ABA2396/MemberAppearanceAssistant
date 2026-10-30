@@ -31,7 +31,7 @@
 | 社区公约 | `/platform/convention/` |
 | 创作设置 | `/platform/setting` |
 
-图表、图片、视频内容本身不做反色处理(整页 `filter: invert` 会毁掉封面与图表)。
+不做整页反色;图表/线稿等内容图仅在个别白底场景定点反色,照片、封面、彩色内容图保持原样。
 
 ## 安装
 
@@ -44,9 +44,9 @@
 - 脚本会检测 [Dark Reader](https://darkreader.org/),它与本脚本同时开启会双重暗色打架,检测到时会在按钮悬停提示与控制台警告,建议对 `member.bilibili.com` 关闭 Dark Reader;
 - 同源 iframe(图文编辑器、稿件列表、创作选择)由 Tampermonkey 按 `@match` 自动注入,开关状态跨 frame 同步。
 
-## 维护与重新生成
+## 维护方式
 
-站方颜色全部写死 hex 且无语义变量,脚本主体 CSS 由 `tools/` 的生成器对站方真实样式表做声明级颜色映射自动产出(文字灰提亮、背景灰阶压暗、品牌色保留、浅彩底同色相压暗、`b-style` 语义变量整体换肤)。站点改版后的维护流程见 [tools/README.md](./tools/README.md),页面探查结论与判别点见 [docs/probe-notes.md](./docs/probe-notes.md)。
+脚本内置**动态映射引擎**:运行时遍历页面全部样式表,逐声明做 ｢文字灰提亮、背景灰阶压暗、品牌色保留、浅彩底同色相压暗｣ 的颜色变换,站方改版新增的样式会被自动接住,一般无需更新脚本。个别组件颜色不对时在 `tools/member-dark.template.js` 的 `CORE_CSS` 加定点覆盖,维护细节见 [tools/README.md](./tools/README.md)。
 
 ## 已知问题与改版风险
 
